@@ -1,7 +1,7 @@
 # Stylometry-Federalist-Papers
 This is a project to test how effective LLMs are in stylometrically determining authorship of disputed texts, using the federalist papers as a test case.
 
-# results now 
+# results
 Using a google colab notebook, I fine-tuned a separate GPT-2 model on federalist papers written by Alexander Hamilton and those written by James Madison. I then ran a leave one out validation, holding out one known paper at a time, retraining on the rest, and checking whether the method correctly identifies its true author. The model that found the left-out paper most predictable  measured as the perplexity of the questioned document was ruled the winner. I have run this with an n=10 sample of papers and the models correctly predicted the true author every time.
 
    | Metric | Value |

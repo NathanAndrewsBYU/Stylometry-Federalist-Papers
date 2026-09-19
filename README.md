@@ -27,7 +27,7 @@ I based my methodology off of the paper "Attributing authorship via the perplexi
 To replicate this experiment, Open notebooks/gpt2_federalist_stylometry.ipynb in Colab, set runtime to GPU, run cells in order. It will import GPT-2 and everything else necessary, and autodownloads the federalist papers from the Gutenberg Project website. Cell 8 has sample_size = 10 and epoch = 10, adjust these as necessary.
 
 # next steps
-I plan to re-run the leave one out test with n=65 all papers reliably attributed to Madison and Hamilton, not just 10. I also plan to test the models on the 12 papers with disputed authorship (although almost everyone now agrees they were written by Madison)
+I plan to re-run the leave one out test with n=65 all papers reliably attributed to Madison and Hamilton, not just 10. I also plan to test the models on the 12 papers with disputed authorship (although statistical models and historians generally agree that they were written by Madison)
 
 # references
 https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0327081

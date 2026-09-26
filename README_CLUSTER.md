@@ -3,7 +3,7 @@
 This is a script-based port of the original Colab notebook (`gpt2_federalist_stylometry.ipynb`),
 restructured to run as scheduled SLURM jobs instead of interactive notebook cells. All the
 actual model logic (fine-tuning, perplexity calculation, leave-one-out validation) is identical
-to the notebook — only the delivery mechanism has changed.
+to the notebook, only the delivery mechanism has changed.
 
 ## Files
 

@@ -11,6 +11,10 @@
 
 mkdir -p logs results
 
+source /apps/miniconda3/latest/etc/profile.d/conda.sh
+if [ -f "/apps/miniconda3/latest/etc/profile.d/mamba.sh" ]; then
+    source /apps/miniconda3/latest/etc/profile.d/mamba.sh
+fi
 mamba activate federalist
 
 export HF_HUB_OFFLINE=1

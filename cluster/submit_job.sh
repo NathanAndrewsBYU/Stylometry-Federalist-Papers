@@ -31,6 +31,9 @@ case "$MODE" in
   epoch-sweep)
     python run_experiment.py --mode epoch-sweep --epoch-values 5 10 20 40 80
     ;;
+    balanced)
+    python run_experiment.py --mode balanced --epochs 30
+    ;;
   *)
     echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep"
     exit 1

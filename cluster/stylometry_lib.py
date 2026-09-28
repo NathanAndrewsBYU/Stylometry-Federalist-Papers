@@ -315,6 +315,93 @@ def leave_one_out_validation(hamilton_files, madison_files, sample_size=None, ep
           f"({sum(r['correct'] for r in results)}/{len(results)})", flush=True)
     return results
 
+def leave_one_out_validation_balanced(hamilton_files, madison_files, epochs=10, seed=None,
+                                       balance_seed=42, save_full_models=False,
+                                       full_models_dir="models", batch_size=2):
+    """
+    Same idea as leave_one_out_validation, but corrects for the corpus-size
+    imbalance (51 Hamilton papers vs. 14 Madison papers) that the original
+    full run showed causes a systematic bias toward Hamilton attributions
+    (Hamilton's larger training corpus makes its model a better general-purpose
+    predictor, not necessarily a better Hamilton-style predictor).
+
+    Instead of training Hamilton's model on all 51 papers, this picks a FIXED
+    random subsample of Hamilton papers the same size as Madison's full corpus
+    (using balance_seed, so the subsample is reproducible), and treats that
+    subsample as "Hamilton's corpus" throughout:
+
+      - A "balanced full Hamilton" model is trained once on the subsample and
+        reused whenever the held-out paper is Madison's, or a Hamilton paper
+        NOT in the subsample.
+      - If the held-out paper IS one of the sampled Hamilton papers, a
+        "balanced minus-one" model is retrained excluding it (required to
+        avoid testing on its own training data).
+      - Hamilton papers outside the subsample were never trained on to begin
+        with, so they're already validly held-out -- no retraining needed.
+
+    This also needs far fewer total trainings than the original full run,
+    since Hamilton's model is now capped at ~14 papers instead of ~50.
+    """
+    results = []
+    if seed is not None:
+        random.seed(seed)
+
+    balance_rng = random.Random(balance_seed)
+    sample_n = min(len(madison_files), len(hamilton_files))
+    hamilton_subsample = balance_rng.sample(hamilton_files, sample_n)
+    hamilton_subsample_set = set(hamilton_subsample)
+
+    print(f"Balanced Hamilton subsample: {len(hamilton_subsample)} of {len(hamilton_files)} "
+          f"papers (matched to Madison's {len(madison_files)})", flush=True)
+
+    all_papers = [("hamilton", f) for f in hamilton_files] + [("madison", f) for f in madison_files]
+
+    print("Training balanced-full Hamilton model and full Madison model...", flush=True)
+    full_ham_model = fine_tune_on_files(
+        hamilton_subsample, output_dir=os.path.join(full_models_dir, "balanced_full_hamilton"),
+        epochs=epochs, batch_size=batch_size, save_to_disk=save_full_models,
+    )
+    full_mad_model = fine_tune_on_files(
+        madison_files, output_dir=os.path.join(full_models_dir, "full_madison_balanced_run"),
+        epochs=epochs, batch_size=batch_size, save_to_disk=save_full_models,
+    )
+
+    for true_author, held_out_file in all_papers:
+        if true_author == "hamilton":
+            if held_out_file in hamilton_subsample_set:
+                remaining = [f for f in hamilton_subsample if f != held_out_file]
+                ham_model = fine_tune_on_files(remaining, epochs=epochs, batch_size=batch_size, save_to_disk=False)
+            else:
+                ham_model = full_ham_model  # never trained on this paper -- already valid
+            mad_model = full_mad_model
+        else:
+            remaining_madison = [f for f in madison_files if f != held_out_file]
+            mad_model = fine_tune_on_files(remaining_madison, epochs=epochs, batch_size=batch_size, save_to_disk=False)
+            ham_model = full_ham_model
+
+        held_out_text = load_and_clean_cached([held_out_file])[0]
+        ppl_hamilton = compute_perplexity(ham_model, tokenizer, held_out_text)
+        ppl_madison = compute_perplexity(mad_model, tokenizer, held_out_text)
+
+        predicted_author = "hamilton" if ppl_hamilton < ppl_madison else "madison"
+        correct = predicted_author == true_author
+
+        results.append({
+            "file": os.path.basename(held_out_file),
+            "true_author": true_author,
+            "predicted_author": predicted_author,
+            "ppl_hamilton": ppl_hamilton,
+            "ppl_madison": ppl_madison,
+            "correct": correct,
+        })
+        print(f"{os.path.basename(held_out_file)} | true={true_author} pred={predicted_author} "
+              f"(H:{ppl_hamilton:.1f} M:{ppl_madison:.1f}) {'CORRECT' if correct else 'WRONG'}",
+              flush=True)
+
+    accuracy = sum(r["correct"] for r in results) / len(results)
+    print(f"\nOverall BALANCED leave-one-out accuracy: {accuracy:.1%} "
+          f"({sum(r['correct'] for r in results)}/{len(results)})", flush=True)
+    return results
 
 def score_disputed_papers(hamilton_files, madison_files, disputed_files, epochs=10,
                            models_dir="models", batch_size=2):

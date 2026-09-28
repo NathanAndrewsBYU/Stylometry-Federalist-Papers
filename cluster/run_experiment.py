@@ -34,6 +34,7 @@ from stylometry_lib import (
     device,
     list_txt_files,
     leave_one_out_validation,
+    leave_one_out_validation_balanced,
     score_disputed_papers,
     save_results_csv,
 )
@@ -42,7 +43,7 @@ from stylometry_lib import (
 def main():
     parser = argparse.ArgumentParser(description="Run Federalist Papers GPT-2 authorship experiments.")
     parser.add_argument("--mode", required=True,
-                         choices=["first-try", "full", "disputed", "epoch-sweep"],
+                         choices=["first-try", "full", "disputed", "epoch-sweep","balanced"],
                          help="Which experiment to run.")
     parser.add_argument("--sample-size", type=int, default=None,
                          help="For --mode first-try: number of random papers to test (default: all).")
@@ -110,6 +111,16 @@ def main():
         results = score_disputed_papers(hamilton_files, madison_files, disputed_files,
                                          epochs=args.epochs, batch_size=args.batch_size)
         save_results_csv(results, os.path.join(args.output_dir, f"disputed_papers_epochs{args.epochs}.csv"))
+
+    elif args.mode == "balanced":
+        results = leave_one_out_validation_balanced(
+            hamilton_files, madison_files,
+            epochs=args.epochs,
+            seed=args.seed,
+            batch_size=args.batch_size,
+            save_full_models=args.save_full_models,
+        )
+        save_results_csv(results, os.path.join(args.output_dir, f"leave_one_out_balanced_epochs{args.epochs}.csv"))
 
     elif args.mode == "epoch-sweep":
         # Runs full leave-one-out validation at each epoch value in turn, saving

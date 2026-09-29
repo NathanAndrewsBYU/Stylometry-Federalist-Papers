@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=m13h
 #SBATCH --gres=gpu:h200:1
-#SBATCH --time=04:00:00
+#SBATCH --time=06:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 

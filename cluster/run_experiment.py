@@ -43,8 +43,12 @@ from stylometry_lib import (
 def main():
     parser = argparse.ArgumentParser(description="Run Federalist Papers GPT-2 authorship experiments.")
     parser.add_argument("--mode", required=True,
-                         choices=["first-try", "full", "disputed", "epoch-sweep","balanced"],
+                         choices=["first-try", "full", "disputed", "epoch-sweep","balanced","balanced-epoch-sweep"],
                          help="Which experiment to run.")
+    parser.add_argument("--balance-seed", type=int, default=42,
+                         help="For --mode balanced / balanced-epoch-sweep: random seed for "
+                              "selecting the fixed Hamilton subsample (matched to Madison's "
+                              "corpus size), held constant while sweeping epochs.")
     parser.add_argument("--sample-size", type=int, default=None,
                          help="For --mode first-try: number of random papers to test (default: all).")
     parser.add_argument("--epochs", type=int, default=10,
@@ -121,6 +125,44 @@ def main():
             save_full_models=args.save_full_models,
         )
         save_results_csv(results, os.path.join(args.output_dir, f"leave_one_out_balanced_epochs{args.epochs}.csv"))
+
+    elif args.mode == "balanced-epoch-sweep":
+        # Sweeps epoch count using the BALANCED method (matched Hamilton/Madison
+        # corpus sizes), holding the Hamilton subsample fixed (one balance_seed)
+        # so results reflect the epoch effect alone, not subsample selection.
+        summary_rows = []
+        for epoch_count in args.epoch_values:
+            print(f"\n{'='*60}\nBalanced epoch sweep: running at epochs={epoch_count}\n{'='*60}")
+            results = leave_one_out_validation_balanced(
+                hamilton_files, madison_files,
+                epochs=epoch_count,
+                seed=args.seed,
+                balance_seed=args.balance_seed,
+                batch_size=args.batch_size,
+            )
+            save_results_csv(results, os.path.join(
+                args.output_dir, f"leave_one_out_balanced_epochs{epoch_count}.csv"))
+
+            n_ham = sum(1 for r in results if r["true_author"] == "hamilton")
+            n_mad = sum(1 for r in results if r["true_author"] == "madison")
+            correct_ham = sum(1 for r in results if r["true_author"] == "hamilton" and r["correct"])
+            correct_mad = sum(1 for r in results if r["true_author"] == "madison" and r["correct"])
+            overall_accuracy = sum(r["correct"] for r in results) / len(results)
+
+            summary_rows.append({
+                "epochs": epoch_count,
+                "overall_accuracy": overall_accuracy,
+                "hamilton_accuracy": correct_ham / n_ham if n_ham else None,
+                "madison_accuracy": correct_mad / n_mad if n_mad else None,
+                "n": len(results),
+            })
+
+        save_results_csv(summary_rows, os.path.join(args.output_dir, "balanced_epoch_sweep_summary.csv"))
+        print("\nBalanced epoch sweep summary:")
+        for row in summary_rows:
+            print(f"  epochs={row['epochs']:>4}  overall={row['overall_accuracy']:.1%}  "
+                  f"hamilton={row['hamilton_accuracy']:.1%}  madison={row['madison_accuracy']:.1%}")
+
 
     elif args.mode == "epoch-sweep":
         # Runs full leave-one-out validation at each epoch value in turn, saving

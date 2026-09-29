@@ -21,9 +21,22 @@ Usage examples:
     # Score the 12 disputed papers (only run after full validation looks good)
     python run_experiment.py --mode disputed --epochs 30
 
-    # Epoch sweep: run full validation at several epoch counts to find the
-    # point where accuracy stops improving (the overfitting check)
+    # Epoch sweep (UNBALANCED method): run full validation at several epoch
+    # counts to find the point where accuracy stops improving
     python run_experiment.py --mode epoch-sweep --epoch-values 5 10 20 40 80
+
+    # Balanced method (corrects for Hamilton/Madison corpus-size imbalance):
+    # a single run is just one value in each list.
+    python run_experiment.py --mode balanced --epoch-values 30 --balance-seeds 42
+
+    # Balanced epoch sweep: multiple epoch values, one fixed subsample
+    python run_experiment.py --mode balanced --epoch-values 10 20 30 40 --balance-seeds 42
+
+    # Balanced seed sweep: one fixed epoch count, multiple subsamples
+    python run_experiment.py --mode balanced --epoch-values 30 --balance-seeds 1 2 3 4 5
+
+    # Full grid: multiple epoch values x multiple subsamples
+    python run_experiment.py --mode balanced --epoch-values 30 40 --balance-seeds 1 2 3 4 5
 """
 
 import argparse
@@ -43,18 +56,22 @@ from stylometry_lib import (
 def main():
     parser = argparse.ArgumentParser(description="Run Federalist Papers GPT-2 authorship experiments.")
     parser.add_argument("--mode", required=True,
-                         choices=["first-try", "full", "disputed", "epoch-sweep","balanced","balanced-epoch-sweep"],
+                         choices=["first-try", "full", "disputed", "epoch-sweep", "balanced"],
                          help="Which experiment to run.")
-    parser.add_argument("--balance-seed", type=int, default=42,
-                         help="For --mode balanced / balanced-epoch-sweep: random seed for "
-                              "selecting the fixed Hamilton subsample (matched to Madison's "
-                              "corpus size), held constant while sweeping epochs.")
     parser.add_argument("--sample-size", type=int, default=None,
-                         help="For --mode first-try: number of random papers to test (default: all).")
+                         help="For --mode first-try: number of random papers to test (default: 10).")
     parser.add_argument("--epochs", type=int, default=10,
-                         help="Training epochs per fine-tuned model (default: 10).")
-    parser.add_argument("--epoch-values", type=int, nargs="+", default=[5, 10, 20, 40],
-                         help="For --mode epoch-sweep: list of epoch counts to test.")
+                         help="Training epochs per fine-tuned model, used by --mode first-try, "
+                              "full, and disputed (default: 10).")
+    parser.add_argument("--epoch-values", type=int, nargs="+", default=[30],
+                         help="Epoch counts to test. For --mode epoch-sweep or balanced, pass "
+                              "multiple values to sweep across epoch counts; a single value "
+                              "just runs once at that epoch count.")
+    parser.add_argument("--balance-seeds", type=int, nargs="+", default=[42],
+                         help="For --mode balanced: random seeds controlling which Hamilton "
+                              "papers get sampled into the size-matched subsample. Pass "
+                              "multiple values to test sensitivity to which papers get picked; "
+                              "a single value just runs once with that subsample.")
     parser.add_argument("--seed", type=int, default=42,
                          help="Random seed for sample selection (reproducibility).")
     parser.add_argument("--batch-size", type=int, default=2,
@@ -116,59 +133,10 @@ def main():
                                          epochs=args.epochs, batch_size=args.batch_size)
         save_results_csv(results, os.path.join(args.output_dir, f"disputed_papers_epochs{args.epochs}.csv"))
 
-    elif args.mode == "balanced":
-        results = leave_one_out_validation_balanced(
-            hamilton_files, madison_files,
-            epochs=args.epochs,
-            seed=args.seed,
-            batch_size=args.batch_size,
-            save_full_models=args.save_full_models,
-        )
-        save_results_csv(results, os.path.join(args.output_dir, f"leave_one_out_balanced_epochs{args.epochs}.csv"))
-
-    elif args.mode == "balanced-epoch-sweep":
-        # Sweeps epoch count using the BALANCED method (matched Hamilton/Madison
-        # corpus sizes), holding the Hamilton subsample fixed (one balance_seed)
-        # so results reflect the epoch effect alone, not subsample selection.
-        summary_rows = []
-        for epoch_count in args.epoch_values:
-            print(f"\n{'='*60}\nBalanced epoch sweep: running at epochs={epoch_count}\n{'='*60}")
-            results = leave_one_out_validation_balanced(
-                hamilton_files, madison_files,
-                epochs=epoch_count,
-                seed=args.seed,
-                balance_seed=args.balance_seed,
-                batch_size=args.batch_size,
-            )
-            save_results_csv(results, os.path.join(
-                args.output_dir, f"leave_one_out_balanced_epochs{epoch_count}.csv"))
-
-            n_ham = sum(1 for r in results if r["true_author"] == "hamilton")
-            n_mad = sum(1 for r in results if r["true_author"] == "madison")
-            correct_ham = sum(1 for r in results if r["true_author"] == "hamilton" and r["correct"])
-            correct_mad = sum(1 for r in results if r["true_author"] == "madison" and r["correct"])
-            overall_accuracy = sum(r["correct"] for r in results) / len(results)
-
-            summary_rows.append({
-                "epochs": epoch_count,
-                "overall_accuracy": overall_accuracy,
-                "hamilton_accuracy": correct_ham / n_ham if n_ham else None,
-                "madison_accuracy": correct_mad / n_mad if n_mad else None,
-                "n": len(results),
-            })
-
-        save_results_csv(summary_rows, os.path.join(args.output_dir, "balanced_epoch_sweep_summary.csv"))
-        print("\nBalanced epoch sweep summary:")
-        for row in summary_rows:
-            print(f"  epochs={row['epochs']:>4}  overall={row['overall_accuracy']:.1%}  "
-                  f"hamilton={row['hamilton_accuracy']:.1%}  madison={row['madison_accuracy']:.1%}")
-
-
     elif args.mode == "epoch-sweep":
-        # Runs full leave-one-out validation at each epoch value in turn, saving
-        # a separate CSV per value. This is what actually answers "what's the
-        # ideal epoch count" empirically, rather than guessing or borrowing a
-        # number from a different paper's dataset.
+        # UNBALANCED method (uses the full Hamilton/Madison corpora as-is).
+        # Runs full leave-one-out validation at each epoch value in turn,
+        # saving a separate CSV per value.
         summary_rows = []
         for epoch_count in args.epoch_values:
             print(f"\n{'='*60}\nEpoch sweep: running full validation at epochs={epoch_count}\n{'='*60}")
@@ -187,6 +155,49 @@ def main():
         print("\nEpoch sweep summary:")
         for row in summary_rows:
             print(f"  epochs={row['epochs']:>4}  accuracy={row['accuracy']:.1%}  (n={row['n']})")
+
+    elif args.mode == "balanced":
+        # BALANCED method (matches Hamilton's training corpus size to
+        # Madison's, to correct the corpus-size bias the unbalanced method
+        # showed). Tests every combination of --epoch-values x
+        # --balance-seeds. A plain single run is just one value in each list
+        # (the argument defaults give you exactly that: epochs=[30], seed=[42]).
+        summary_rows = []
+        for epoch_count in args.epoch_values:
+            for b_seed in args.balance_seeds:
+                print(f"\n{'='*60}\nBalanced: epochs={epoch_count}, balance_seed={b_seed}\n{'='*60}")
+                results = leave_one_out_validation_balanced(
+                    hamilton_files, madison_files,
+                    epochs=epoch_count,
+                    seed=args.seed,
+                    balance_seed=b_seed,
+                    batch_size=args.batch_size,
+                    save_full_models=args.save_full_models,
+                )
+                save_results_csv(results, os.path.join(
+                    args.output_dir, f"leave_one_out_balanced_epochs{epoch_count}_seed{b_seed}.csv"))
+
+                n_ham = sum(1 for r in results if r["true_author"] == "hamilton")
+                n_mad = sum(1 for r in results if r["true_author"] == "madison")
+                correct_ham = sum(1 for r in results if r["true_author"] == "hamilton" and r["correct"])
+                correct_mad = sum(1 for r in results if r["true_author"] == "madison" and r["correct"])
+                overall_accuracy = sum(r["correct"] for r in results) / len(results)
+
+                summary_rows.append({
+                    "epochs": epoch_count,
+                    "balance_seed": b_seed,
+                    "overall_accuracy": overall_accuracy,
+                    "hamilton_accuracy": correct_ham / n_ham if n_ham else None,
+                    "madison_accuracy": correct_mad / n_mad if n_mad else None,
+                    "n": len(results),
+                })
+
+        save_results_csv(summary_rows, os.path.join(args.output_dir, "balanced_summary.csv"))
+        print("\nBalanced summary:")
+        for row in summary_rows:
+            print(f"  epochs={row['epochs']:>4}  seed={row['balance_seed']:>2}  "
+                  f"overall={row['overall_accuracy']:.1%}  hamilton={row['hamilton_accuracy']:.1%}  "
+                  f"madison={row['madison_accuracy']:.1%}")
 
     elapsed = time.time() - start_time
     print(f"\nTotal runtime: {elapsed/60:.1f} minutes")

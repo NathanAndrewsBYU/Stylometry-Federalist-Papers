@@ -39,7 +39,7 @@ case "$MODE" in
     python run_experiment.py --mode balanced --epochs 30
     ;;
    balanced-epoch-sweep)
-    python run_experiment.py --mode balanced-epoch-sweep --epoch-values 5 10 20 30 40
+    python run_experiment.py --mode balanced-epoch-sweep --epoch-values 50 60 80 100
     ;;
   *)
     echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep"

@@ -1,0 +1,3 @@
+file,true_author,predicted_author,ppl_hamilton,ppl_madison,correct
+federalist_24.txt,hamilton,hamilton,27.411069869995117,31.483335494995117,True
+federalist_08.txt,hamilton,hamilton,30.429859161376953,36.48441696166992,True

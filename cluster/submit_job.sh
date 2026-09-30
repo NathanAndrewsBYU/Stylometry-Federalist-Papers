@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=m13h
 #SBATCH --gres=gpu:h200:1
-#SBATCH --time=06:00:00
+#SBATCH --time=16:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 
@@ -67,7 +67,7 @@ case "$MODE" in
     python run_experiment.py --mode epoch-sweep --epoch-values 5 10 20 40 80
     ;;
   balanced)
-    python run_experiment.py --mode balanced --epoch-values 30 40 --balance-seeds 1 2 3 4 5
+    python run_experiment.py --mode balanced --epoch-values 80 100 --balance-seeds 1 2 3 4 5
     ;;
   *)
     echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, balanced"

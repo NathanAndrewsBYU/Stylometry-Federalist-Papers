@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=m13h
 #SBATCH --gres=gpu:h200:1
-#SBATCH --time=16:00:00
+#SBATCH --time=04:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 
@@ -15,39 +15,68 @@
 # SLURM batch script to run one of the Federalist Papers experiments on
 # BYU's Office of Research Computing cluster.
 #
-# CONFIRMED WORKING CONFIGURATION: partition=m13h, gres=gpu:h200:1 (H200,
-# Hopper architecture, compute capability 9.0 -- compatible with the
-# installed PyTorch build). Avoids the default P100 nodes (Pascal, compute
-# capability 6.0 -- NOT supported by this PyTorch build) and the QOS-
-# restricted A100 partitions (cs, dw) this account can't access.
+# CONFIRMED WORKING CONFIGURATION (as of first successful test run,
+# 2026-09-26): partition=m13h, gres=gpu:h200:1. This was reached after
+# testing several alternatives:
+#   - Default/no partition -> landed on an m9g node with a P100 GPU
+#     (Pascal architecture, compute capability 6.0). The installed PyTorch
+#     build (2.13.0) only ships kernels for compute capability >=7.5, so
+#     training crashed with "CUDA error: no kernel image is available for
+#     execution on the device."
+#   - partition=cs (which has A100s) -> denied: "Cannot access partition cs
+#     due to QOS gpu not being allowed." This partition's GPUs are
+#     restricted to specific accounts/groups this account doesn't have.
+#   - partition=m13h with gres=gpu:h200:1 -> WORKED. H200 is Hopper
+#     architecture (compute capability 9.0), well within the installed
+#     PyTorch's supported range, and this partition has no QOS restriction
+#     for this account.
+# If this stops working (e.g. the partition becomes unavailable or gets
+# restricted), check available GPU partitions with:
+#   sinfo -o "%P %N %G"
+# and confirm compute capability compatibility against the installed
+# PyTorch's supported list (Runtime error messages will show both). L40S
+# GPUs (partition m13l, gres=gpu:l40s:1, compute capability 8.9) were also
+# reachable without a QOS error and are a fallback worth trying.
+#
+# Per BYU ORC's AI agent policy (/apps/instructions_for_ai_agents/BYU_ORC_AGENTS.md):
+#   - Every Slurm job requests CPU cores, node count, memory, and a time
+#     limit (rule 4) — all present above.
+#   - Check available modules before relying solely on a conda/mamba
+#     environment (rule 8) — see the module load line below.
+#   - Do not circumvent login-node limits; use Slurm for GPU work (rule 3) —
+#     this script IS the compliant path; do not run training directly on a
+#     login node or inside a plain interactive shell.
 #
 # Usage (from the login node, after prepare_corpus.py has been run once):
 #   sbatch submit_job.sh first-try
 #   sbatch submit_job.sh full
-#   sbatch submit_job.sh disputed
+#   sbatch submit_job.sh disputed [epochs]   # epochs defaults to 30, e.g.:
+#                                             #   sbatch submit_job.sh disputed 30
+#                                             #   sbatch submit_job.sh disputed 80
 #   sbatch submit_job.sh epoch-sweep
-#   sbatch submit_job.sh balanced
-#
-# For "balanced", edit the --epoch-values and --balance-seeds lists below
-# directly to control what it does: a single number in each list runs once;
-# multiple numbers in --epoch-values sweeps epoch counts; multiple numbers
-# in --balance-seeds sweeps which Hamilton papers get subsampled; multiple
-# numbers in both runs the full grid of every combination.
 # ---------------------------------------------------------------------------
+
+set -x
 
 mkdir -p logs results
 
-# Activate the mamba environment. Sourced explicitly here (not just via
-# ~/.bashrc) because a non-interactive batch job's shell doesn't read
-# ~/.bashrc automatically.
-source /apps/miniconda3/latest/etc/profile.d/conda.sh
-if [ -f "/apps/miniconda3/latest/etc/profile.d/mamba.sh" ]; then
-    source /apps/miniconda3/latest/etc/profile.d/mamba.sh
-fi
-mamba activate federalist
+# Check for a system Python module before relying purely on mamba's bundled
+# one (BYU ORC AI agent policy rule 8). Uncomment if 'module avail python'
+# on the login node showed a version you want loaded inside the job too:
+# module load python/3.11
 
-# Force use of GPT-2 files pre-cached on the login node, since compute
-# nodes have no internet access.
+# Activate the mamba environment set up per README_CLUSTER.md.
+# (mamba/conda is enabled via ~/.bashrc on this system, not an Lmod module —
+# see that file's "conda initialize" block.)
+source ~/.bashrc
+mamba activate federalist
+which python
+python -c "import torch; print(torch.__version__)"
+
+# Avoid any attempt to reach the network from the compute node — GPT-2's
+# tokenizer/model files were pre-downloaded and cached on the login node
+# (see README_CLUSTER.md), so this forces use of that local cache instead
+# of trying (and failing) to hit huggingface.co from an offline compute node.
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
@@ -61,16 +90,21 @@ case "$MODE" in
     python run_experiment.py --mode full --epochs 30
     ;;
   disputed)
-    python run_experiment.py --mode disputed --epochs 30
+    EPOCHS=${2:-30}
+    python run_experiment.py --mode disputed --epochs "$EPOCHS"
     ;;
   epoch-sweep)
     python run_experiment.py --mode epoch-sweep --epoch-values 5 10 20 40 80
     ;;
-  balanced)
-    python run_experiment.py --mode balanced --epoch-values 80 100 --balance-seeds 1 2 3 4 5
-    ;;
   *)
-    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, balanced"
+    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep"
     exit 1
     ;;
 esac
+
+# The H200 handled a 2-paper/2-epoch test in ~14s of actual training time
+# per model. A dedicated GPU node likely has memory to spare for a larger
+# --batch-size than the default of 2 (chosen originally for Colab's shared,
+# memory-constrained T4s) — try --batch-size 4 or 8 on future runs and watch
+# nvidia-smi (or nvtop in an salloc session) to confirm headroom before
+# pushing further.

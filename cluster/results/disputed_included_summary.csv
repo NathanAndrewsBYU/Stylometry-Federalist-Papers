@@ -1,0 +1,5 @@
+epochs,balance_seed,overall_accuracy,disputed_accuracy,n_disputed,n_total
+30,1,0.987012987012987,1.0,12,77
+30,2,1.0,1.0,12,77
+30,3,1.0,1.0,12,77
+30,4,1.0,1.0,12,77

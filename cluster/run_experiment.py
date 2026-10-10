@@ -37,6 +37,16 @@ Usage examples:
 
     # Full grid: multiple epoch values x multiple subsamples
     python run_experiment.py --mode balanced --epoch-values 30 40 --balance-seeds 1 2 3 4 5
+
+    # Disputed-included LOO: treat the 12 disputed papers as genuine Madison
+    # papers (14 known + 12 disputed = 26), balanced leave-one-out over that
+    # expanded corpus (Hamilton auto-subsampled to 26 to match). A style-
+    # consistency check: if a disputed paper, held out and compared only
+    # against the OTHER Madison-labeled papers, still comes out as Madison,
+    # that's independent of score_disputed_papers (which never holds anything
+    # out). Sweep seeds to check how much the specific Hamilton subsample
+    # matters.
+    python run_experiment.py --mode disputed-loo --epoch-values 30 --balance-seeds 1 2 3 4 5
 """
 
 import argparse
@@ -56,7 +66,7 @@ from stylometry_lib import (
 def main():
     parser = argparse.ArgumentParser(description="Run Federalist Papers GPT-2 authorship experiments.")
     parser.add_argument("--mode", required=True,
-                         choices=["first-try", "full", "disputed", "epoch-sweep", "balanced"],
+                         choices=["first-try", "full", "disputed", "epoch-sweep", "balanced", "disputed-loo"],
                          help="Which experiment to run.")
     parser.add_argument("--sample-size", type=int, default=None,
                          help="For --mode first-try: number of random papers to test (default: 10).")
@@ -198,6 +208,69 @@ def main():
             print(f"  epochs={row['epochs']:>4}  seed={row['balance_seed']:>2}  "
                   f"overall={row['overall_accuracy']:.1%}  hamilton={row['hamilton_accuracy']:.1%}  "
                   f"madison={row['madison_accuracy']:.1%}")
+
+    elif args.mode == "disputed-loo":
+        # Treat the 12 disputed papers as genuine Madison papers and run
+        # BALANCED leave-one-out validation over the resulting 26-paper
+        # Madison corpus (14 known + 12 disputed). Hamilton is auto-balanced
+        # down to match (26 of 51) by leave_one_out_validation_balanced --
+        # same mechanism as --mode balanced, just handed a bigger Madison
+        # list. This is a different check than score_disputed_papers: there,
+        # models are trained on ALL known papers with nothing held out, and
+        # each disputed paper is scored once. Here, each disputed paper gets
+        # held out one at a time and compared only against the OTHER
+        # Madison-labeled papers (which include other disputed papers) --
+        # a style-consistency check independent of the main disputed-scoring
+        # method.
+        disputed_files = list_txt_files("disputed")
+        print(f"Loaded {len(disputed_files)} disputed papers.")
+        expanded_madison = madison_files + disputed_files
+        disputed_basenames = {os.path.basename(f) for f in disputed_files}
+        print(f"Expanded Madison corpus: {len(madison_files)} known + "
+              f"{len(disputed_files)} disputed = {len(expanded_madison)} total.")
+
+        summary_rows = []
+        for epoch_count in args.epoch_values:
+            for b_seed in args.balance_seeds:
+                print(f"\n{'='*60}\nDisputed-included LOO: epochs={epoch_count}, "
+                      f"balance_seed={b_seed}\n{'='*60}")
+                results = leave_one_out_validation_balanced(
+                    hamilton_files, expanded_madison,
+                    epochs=epoch_count,
+                    seed=args.seed,
+                    balance_seed=b_seed,
+                    batch_size=args.batch_size,
+                    save_full_models=args.save_full_models,
+                )
+                # true_author is "madison" for every expanded-corpus row, so
+                # flag which ones were originally disputed to report their
+                # accuracy separately from the 14 already-known Madison papers.
+                for r in results:
+                    r["was_disputed"] = r["file"] in disputed_basenames
+
+                save_results_csv(results, os.path.join(
+                    args.output_dir,
+                    f"leave_one_out_disputed_included_epochs{epoch_count}_seed{b_seed}.csv"))
+
+                n_disputed = sum(1 for r in results if r["was_disputed"])
+                correct_disputed = sum(1 for r in results if r["was_disputed"] and r["correct"])
+                overall_accuracy = sum(r["correct"] for r in results) / len(results)
+
+                summary_rows.append({
+                    "epochs": epoch_count,
+                    "balance_seed": b_seed,
+                    "overall_accuracy": overall_accuracy,
+                    "disputed_accuracy": correct_disputed / n_disputed if n_disputed else None,
+                    "n_disputed": n_disputed,
+                    "n_total": len(results),
+                })
+
+        save_results_csv(summary_rows, os.path.join(args.output_dir, "disputed_included_summary.csv"))
+        print("\nDisputed-included LOO summary:")
+        for row in summary_rows:
+            print(f"  epochs={row['epochs']:>4}  seed={row['balance_seed']:>2}  "
+                  f"overall={row['overall_accuracy']:.1%}  "
+                  f"disputed-papers-correct={row['disputed_accuracy']:.1%} (n={row['n_disputed']})")
 
     elapsed = time.time() - start_time
     print(f"\nTotal runtime: {elapsed/60:.1f} minutes")

@@ -27,7 +27,7 @@ EFFICIENCY CHANGES IN THIS VERSION (vs. the original Colab notebook):
    checkpoint is a few hundred MB; avoiding writing and re-reading that from
    disk 65 times is one of the largest savings here, especially on a shared
    cluster filesystem where I/O can be a real bottleneck. Models you actually
-   want to keep after the run (the two "full" models, and score_disputed_papers'
+   want to keep after the run (the two "full" models, and score_disputed_papers's
    final models) still save to disk via save_to_disk=True.
 
 4. NEW — no temp file round-trip for training text: the original notebook wrote
@@ -44,6 +44,14 @@ EFFICIENCY CHANGES IN THIS VERSION (vs. the original Colab notebook):
 6. NEW — torch.backends.cudnn.benchmark = True: lets cuDNN auto-tune its
    algorithm selection for your specific GPU and input sizes, which are
    constant across this workload (fixed block_size) — a small but free win.
+
+7. NEW — score_disputed_papers now balances the Hamilton/Madison training
+   corpora (51 vs. 14 papers) the same way leave_one_out_validation_balanced
+   does, instead of training on the raw, size-mismatched corpora. Without
+   this, the Hamilton model saw 3.6x more training text than the Madison
+   model, which can bias perplexity comparisons toward Hamilton independent
+   of actual stylistic fit. See leave_one_out_validation_balanced's docstring
+   for the reasoning; score_disputed_papers applies the identical fix.
 """
 
 import os
@@ -204,7 +212,7 @@ def fine_tune_on_files(file_list, output_dir=None, epochs=10, block_size=256,
     epoch-sweep experiment to find the right value empirically.
 
     save_to_disk: set True only for models you want to keep after this run
-    (e.g. the "full" Hamilton/Madison models, or score_disputed_papers' final
+    (e.g. the "full" Hamilton/Madison models, or score_disputed_papers's final
     models). Leave False for one-off "minus-one" models used and discarded
     within the same leave-one-out iteration — this skips a full checkpoint
     write+read that would otherwise happen 65 times during a full validation
@@ -404,16 +412,33 @@ def leave_one_out_validation_balanced(hamilton_files, madison_files, epochs=10, 
     return results
 
 def score_disputed_papers(hamilton_files, madison_files, disputed_files, epochs=10,
-                           models_dir="models", batch_size=2):
-    """Trains final models on ALL solely-attributed papers (no held-out), then
-    scores each disputed paper under both. These models ARE saved to disk since
-    they represent your final, reusable result."""
+                           balance_seed=42, models_dir="models", batch_size=2):
+    """Trains final models on ALL solely-attributed papers, then scores each
+    disputed paper under both. These models ARE saved to disk since they
+    represent your final, reusable result.
+
+    Balances the Hamilton/Madison training corpora the same way
+    leave_one_out_validation_balanced does (51 vs. 14 papers -> matched-size
+    subsample of Hamilton, picked via balance_seed), instead of training on
+    the raw, size-mismatched corpora. Without this, the Hamilton model would
+    see 3.6x more training text than the Madison model, which can bias
+    perplexity comparisons toward Hamilton independent of actual stylistic
+    fit -- exactly the bias leave_one_out_validation_balanced was built to
+    correct, applied here to the disputed-paper scoring as well.
+    """
+    balance_rng = random.Random(balance_seed)
+    sample_n = min(len(madison_files), len(hamilton_files))
+    hamilton_subsample = balance_rng.sample(hamilton_files, sample_n)
+
+    print(f"Balanced Hamilton subsample: {len(hamilton_subsample)} of {len(hamilton_files)} "
+          f"papers (matched to Madison's {len(madison_files)})", flush=True)
+
     ham_model = fine_tune_on_files(
-        hamilton_files, output_dir=os.path.join(models_dir, "final_hamilton"),
+        hamilton_subsample, output_dir=os.path.join(models_dir, f"final_hamilton_balanced_seed{balance_seed}"),
         epochs=epochs, batch_size=batch_size, save_to_disk=True,
     )
     mad_model = fine_tune_on_files(
-        madison_files, output_dir=os.path.join(models_dir, "final_madison"),
+        madison_files, output_dir=os.path.join(models_dir, f"final_madison_balanced_seed{balance_seed}"),
         epochs=epochs, batch_size=batch_size, save_to_disk=True,
     )
 
@@ -423,8 +448,8 @@ def score_disputed_papers(hamilton_files, madison_files, disputed_files, epochs=
         ppl_h = compute_perplexity(ham_model, tokenizer, text)
         ppl_m = compute_perplexity(mad_model, tokenizer, text)
         verdict = "Hamilton" if ppl_h < ppl_m else "Madison"
-        results.append({"file": os.path.basename(path), "ppl_hamilton": ppl_h,
-                         "ppl_madison": ppl_m, "verdict": verdict})
+        results.append({"file": os.path.basename(path), "balance_seed": balance_seed,
+                         "ppl_hamilton": ppl_h, "ppl_madison": ppl_m, "verdict": verdict})
         print(f"{os.path.basename(path)}: H={ppl_h:.1f}  M={ppl_m:.1f}  -> {verdict}", flush=True)
 
     madison_count = sum(1 for r in results if r["verdict"] == "Madison")

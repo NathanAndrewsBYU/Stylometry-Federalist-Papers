@@ -37,17 +37,48 @@ to the notebook, only the delivery mechanism has changed.
 
 ## Running experiments
 
-Everything after setup runs through `sbatch`, not directly:
+Everything after setup runs through `sbatch`, not directly. Run these from the `cluster/` folder:
 
 ```bash
-sbatch submit_job.sh sanity        # 10-paper sanity check, ~few minutes to an hour depending on GPU
-sbatch submit_job.sh full          # full 65-paper leave-one-out validation
-sbatch submit_job.sh disputed      # score the 12 disputed papers (run after 'full' looks good)
-sbatch submit_job.sh epoch-sweep   # runs full validation at epochs = 5, 10, 20, 40, 80 to find the best epoch count
+sbatch submit_job.sh first-try              # 10-paper first try (10 epochs), a few minutes
+sbatch submit_job.sh full                   # unbalanced 65-paper leave-one-out validation (30 epochs)
+sbatch submit_job.sh disputed [epochs]      # score the 12 disputed papers; epochs defaults to 30
+sbatch submit_job.sh epoch-sweep            # unbalanced full validation at epochs 5, 10, 20, 40, 80
+sbatch submit_job.sh balanced [options]     # balanced leave-one-out on the 65 known papers (see below)
+sbatch submit_job.sh disputed-loo [options] # balanced leave-one-out with the 12 disputed papers folded into Madison (n = 77)
 ```
 
-Check job status with `squeue -u $USER`. Output and errors land in `logs/`, and results CSVs land in `results/`.
+`balanced` and `disputed-loo` pass any extra options straight to `run_experiment.py`:
 
+- `--epoch-values 30 80` — epoch counts to test (default: 30)
+- `--balance-seeds 1 2 3 4 5` — which random Hamilton subsamples to use (default: 42)
+- `--batch-size N` — training batch size (default: 2)
+
+Examples:
+
+```bash
+sbatch submit_job.sh balanced --epoch-values 80 100 --balance-seeds 1 2 3 4 5
+sbatch submit_job.sh disputed-loo --epoch-values 30 --balance-seeds 1 2 3 4
+```
+
+**Balanced vs. unbalanced.** `full` and `epoch-sweep` train on all 51 Hamilton papers and 14 Madison papers, which biases the model toward Hamilton. `balanced` and `disputed-loo` subsample Hamilton to match Madison's size (the seed controls which papers) but still evaluate every Hamilton paper. The `disputed` mode scores the 12 disputed papers using models trained on 14 balanced Hamilton papers vs. 14 Madison papers.
+
+**Job length.** Every epoch value × seed combination retrains a set of models (about 30 for `balanced`, 54 for `disputed-loo`), and large grids can exceed the job's time limit (`#SBATCH --time` at the top of `submit_job.sh`). Split big grids into separate jobs (for example, one seed or one epoch value per `sbatch`) rather than one long run.
+
+**Results.** Check job status with `squeue -u $USER`. Output and errors land in `logs/`, and result CSVs land in `results/` inside `cluster/`. Copy them into the repo's top-level `results/` folder. Note that `disputed_included_summary.csv` and `balanced_summary.csv` are overwritten by each run of their mode, so rename or copy them before launching another job.
+
+### Burrows' Delta baseline
+
+The traditional baseline needs no GPU and finishes in seconds:
+
+```bash
+python traditional_stylometry.py                                           # balanced, 65 known papers, seed 42
+python traditional_stylometry.py --balance-seeds 1 2 3 4 5                 # balanced, multiple subsamples
+python traditional_stylometry.py --no-balance                              # unbalanced (51 vs 14)
+python traditional_stylometry.py --include-disputed --balance-seeds 1 2 3 4 5   # n = 77 setup
+```
+
+Colab notebooks that run the same experiments are in `notebooks/`.
 ## What's different from Colab
 
 - **No `!pip install`** — dependencies are installed once into a persistent environment, not reinstalled every session.

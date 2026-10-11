@@ -54,10 +54,11 @@
 #                                             #   sbatch submit_job.sh disputed 30
 #                                             #   sbatch submit_job.sh disputed 80
 #   sbatch submit_job.sh epoch-sweep
-#   sbatch submit_job.sh disputed-loo        # 12 disputed papers folded into
-#                                             # Madison's corpus (26 total),
-#                                             # balanced LOO, epochs=30,
-#                                             # balance_seeds 1-5
+#   sbatch submit_job.sh balanced [options]      # balanced LOO on the 65 known papers
+#   sbatch submit_job.sh disputed-loo [options]  # 12 disputed papers folded into
+#                                                # Madison's corpus (26 total), balanced LOO
+#   Options for balanced / disputed-loo are passed to run_experiment.py, e.g.
+#     --epoch-values 30 80 --balance-seeds 1 2 3 4 5
 # ---------------------------------------------------------------------------
 
 set -x
@@ -100,12 +101,20 @@ case "$MODE" in
   epoch-sweep)
     python run_experiment.py --mode epoch-sweep --epoch-values 5 10 20 40 80
     ;;
+  balanced)
+    # Extra options are passed straight through, e.g.:
+    #   sbatch submit_job.sh balanced --epoch-values 80 100 --balance-seeds 1 2 3 4 5
+    shift
+    python run_experiment.py --mode balanced "$@"
+    ;;
   disputed-loo)
-  shift
-  python run_experiment.py --mode disputed-loo "$@"
-  ;;
+    # Extra options are passed straight through, e.g.:
+    #   sbatch submit_job.sh disputed-loo --epoch-values 30 --balance-seeds 1 2 3 4
+    shift
+    python run_experiment.py --mode disputed-loo "$@"
+    ;;
   *)
-    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, disputed-loo"
+    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, balanced, disputed-loo"
     exit 1
     ;;
 esac

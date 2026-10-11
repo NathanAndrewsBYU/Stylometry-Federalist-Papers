@@ -73,7 +73,7 @@ full results in /results
 
 ## Insights
 
-- **Corpus-size imbalance is the largest effect.** Without balancing, every error for both methods falls on Madison, and GPT-2 gets only 4/14 Madison papers right. Balancing brings GPT-2's Madison accuracy to 14/14 at every epoch value, though its errors move to the Hamilton side.
+- **Corpus-size imbalance is the largest effect.** Without balancing, every error for both methods falls on Madison, and GPT-2 gets only 4/14 Madison papers right. Balancing brings GPT-2's Madison accuracy to 14/14 at every epoch value, though its errors move to the Hamilton side. This demonstrates that a corpus size imbalance is a very serious issue with this method.
 - **GPT-2 beats Delta once it is trained long enough.** On the 65 known papers, balanced GPT-2 at 80–100 epochs averages about 98%, versus 92.3% for Delta. At epoch 30 the single balanced run (seed 42) scored 89.2%, below Delta's average. Treat 30 epochs as uncertain until multi-seed runs exist for that setting.
 - **The two methods make different mistakes.** Delta's recurring errors are Madison papers (Fed 10, 14, 38, 44). GPT-2 at 80+ epochs misses Hamilton papers instead (mostly Fed 9, 60, 65). Because their errors barely overlap, combining them could do better than either alone.
 - **Fed 9 may reflect topic leakage.** GPT-2 misses it in every balanced seed-42 run, while Delta never misses it. Fed 9 deals with the same union and faction themes as Madison's Fed 10, so GPT-2 may be picking up topic as well as style, and Delta's function words are less sensitive to topic.

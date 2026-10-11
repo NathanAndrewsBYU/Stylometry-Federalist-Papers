@@ -69,8 +69,6 @@ The ratio is Hamilton perplexity divided by Madison perplexity. Higher means a s
 | 30 | 12/12 | 1.47 | 1.37–1.62 |
 | 80 | 12/12 | 1.37 | 1.09–1.60 (weakest: Fed 57 at 1.09, Fed 53 at 1.13) |
 
-full results in /results
-
 ## Insights
 
 - **Corpus-size imbalance is the largest effect.** Without balancing, every error for both methods falls on Madison, and GPT-2 gets only 4/14 Madison papers right. Balancing brings GPT-2's Madison accuracy to 14/14 at every epoch value, though its errors move to the Hamilton side. This demonstrates that a corpus size imbalance is a very serious issue with this method.

@@ -84,10 +84,46 @@ full results in /results
 - **Raw perplexity grows with epochs, so use the Hamilton/Madison ratio as the margin.** The disputed-paper margin looks smaller at 80 epochs (mean 1.37 versus 1.47), but it isn't a worse model. The ratio is the only comparison that stays meaningful across epoch settings.
 
 
-# Project Structure 
-   notebooks/   — Colab notebook(s)
-   cluster/ code designed to run on the BYU supercomputer cluster rather than on Google Colab
-   results/     — CSV output from validation runs
+# Project Structure
+
+```
+.
+├── README.md
+├── LICENSE
+├── notebooks/                                    # Google Colab notebooks
+│   ├── gpt2_federalist_stylometry.ipynb          # GPT-2 perplexity experiment (original Colab version)
+│   ├── burrows_delta_balanced_n65.ipynb          # Burrows' Delta, balanced, 65 known papers
+│   └── burrows_delta_disputed_included_n77.ipynb # Burrows' Delta, balanced, 77 papers (disputed folded into Madison)
+├── cluster/                                      # Code for the BYU supercomputer (SLURM)
+│   ├── README_CLUSTER.md                         # Cluster setup and how to run experiments
+│   ├── prepare_corpus.py                         # Downloads the papers from Project Gutenberg and splits them by author
+│   ├── stylometry_lib.py                         # GPT-2 fine-tuning, perplexity scoring, leave-one-out validation
+│   ├── run_experiment.py                         # Command-line entry point for all GPT-2 experiments
+│   ├── submit_job.sh                             # SLURM batch script (sbatch submit_job.sh <mode>)
+│   ├── traditional_stylometry.py                 # Burrows' Delta baseline (no GPU needed)
+│   └── requirements.txt                          # Python dependencies
+└── results/                                      # CSV output from every validation run
+```
+
+Folders created when you run the code (not stored in the repo): `corpus/federalist/` (the papers, one folder per author, made by `prepare_corpus.py`) and `logs/` (SLURM output and error logs).
+
+## Results files
+
+| Pattern in `results/` | What it contains |
+|---|---|
+| `leave_one_out_first_try_*.csv`, `leave_one_out_n10.csv` | Early 10-paper test runs |
+| `leave_one_out_full_epochs30.csv` | Unbalanced GPT-2 leave-one-out, 65 known papers, 30 epochs |
+| `leave_one_out_balanced_epochs{E}.csv` | Balanced GPT-2 run at `E` epochs, balance seed 42 |
+| `leave_one_out_balanced_epochs{E}_seed{S}.csv` | Balanced GPT-2 run at `E` epochs with balance seed `S` |
+| `balanced_summary.csv`, `balanced_epoch_sweep_summary.csv` | Accuracy summaries for the balanced runs |
+| `leave_one_out_disputed_included_epochs{E}_seed{S}.csv` | GPT-2 run with the 12 disputed papers folded into Madison (n = 77) |
+| `disputed_included_summary.csv` | Accuracy summary for the n = 77 GPT-2 runs |
+| `disputed_papers_epochs{E}.csv` | Perplexity scores and verdicts for the 12 disputed papers |
+| `traditional_burrows_delta.csv` | Unbalanced Burrows' Delta, 65 known papers |
+| `traditional_burrows_delta_balanced*.csv` | Balanced Burrows' Delta, 65 known papers (per-paper results and summary) |
+| `traditional_burrows_delta_disputed_included*.csv` | Balanced Burrows' Delta, n = 77 setup (per-paper results and summary) |
+
+Each per-paper CSV has one row per held-out paper with its true author, predicted author, the two scores (perplexity for GPT-2, Delta for Burrows' Delta) and whether the prediction was correct.
 
 # Limitations
 The project has some serious limitations. I have not established the ideal number of training epochs. Epochs 5–60 were each run once on a single Hamilton subsample, so the fine-grained differences between them are mostly noise. The broader trend, that 80–100 epochs clearly outperform 30 or fewer, was tested across five subsamples and is more reliable.

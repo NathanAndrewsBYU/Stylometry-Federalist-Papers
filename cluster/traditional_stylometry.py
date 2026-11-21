@@ -58,6 +58,7 @@ import os
 import re
 import glob
 import csv
+import math
 import random
 import statistics
 import argparse
@@ -238,11 +239,49 @@ def main():
                               "12 disputed = 26) before running balanced LOO. Hamilton is "
                               "auto-subsampled to 26 to match. Mirrors --mode disputed-loo on "
                               "the GPT-2 side. Mutually exclusive with --no-balance.")
+    parser.add_argument("--corpus-root", default=None,
+                         help="Corpus directory to use instead of corpus/federalist.")
+    parser.add_argument("--tag", default="",
+                         help="Suffix for output filenames (e.g. _masked) so runs don't overwrite.")
+    parser.add_argument("--null-test", action="store_true",
+                         help="Split Hamilton at random into two pseudo-authors and run LOO "
+                              "(expect ~50%%). Uses --split-seeds / --null-size.")
+    parser.add_argument("--split-seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
+    parser.add_argument("--null-size", type=int, default=14)
     args = parser.parse_args()
+
+    global CORPUS_ROOT
+    if args.corpus_root:
+        CORPUS_ROOT = args.corpus_root
+    print(f"Corpus root: {CORPUS_ROOT}")
 
     hamilton_files = list_txt_files("hamilton")
     madison_files = list_txt_files("madison")
     print(f"Loaded {len(hamilton_files)} Hamilton papers, {len(madison_files)} Madison papers.")
+
+    if args.null_test:
+        rows, summary = [], []
+        for s_seed in args.split_seeds:
+            picked = random.Random(s_seed).sample(hamilton_files, 2 * args.null_size)
+            a, b = sorted(picked[:args.null_size]), sorted(picked[args.null_size:])
+            res = leave_one_out_delta(a, b, n_features=args.n_features,
+                                       balance_seed=None, verbose=False)
+            rename = {"hamilton": "group_a", "madison": "group_b"}
+            for r in res:
+                r["true_author"] = rename[r["true_author"]]
+                r["predicted_author"] = rename[r["predicted_author"]]
+                r["split_seed"] = s_seed
+            ok = sum(r["correct"] for r in res)
+            print(f"split_seed={s_seed}: {ok}/{len(res)} = {ok/len(res):.1%}")
+            rows.extend(res)
+            summary.append({"split_seed": s_seed, "accuracy": ok / len(res),
+                            "n_correct": ok, "n": len(res)})
+        ok, n = sum(s["n_correct"] for s in summary), sum(s["n"] for s in summary)
+        p = sum(math.comb(n, i) for i in range(ok, n + 1)) / 2**n
+        print(f"Pooled {ok}/{n} = {ok/n:.1%} (one-sided binomial p vs 50% = {p:.4f}; approximate)")
+        save_results_csv(rows, f"results/delta_null_test_detail{args.tag}.csv")
+        save_results_csv(summary, f"results/delta_null_test_summary{args.tag}.csv")
+        return
 
     if args.include_disputed:
         if args.no_balance:
@@ -269,7 +308,7 @@ def main():
             all_seed_results[seed] = results
             combined_results.extend(results)
 
-        save_results_csv(combined_results, "results/traditional_burrows_delta_disputed_included.csv")
+        save_results_csv(combined_results, f"results/traditional_burrows_delta_disputed_included{args.tag}.csv")
 
         print("\nDisputed-included accuracy per seed:")
         summary_rows = []
@@ -287,13 +326,13 @@ def main():
                 "n_disputed": n_disputed,
                 "n_total": len(results),
             })
-        save_results_csv(summary_rows, "results/traditional_burrows_delta_disputed_included_summary.csv")
+        save_results_csv(summary_rows, f"results/traditional_burrows_delta_disputed_included_summary{args.tag}.csv")
         return
 
     if args.no_balance:
         results = leave_one_out_delta(hamilton_files, madison_files,
                                        n_features=args.n_features, balance_seed=None)
-        save_results_csv(results, "results/traditional_burrows_delta_unbalanced.csv")
+        save_results_csv(results, f"results/traditional_burrows_delta_unbalanced{args.tag}.csv")
         return
 
     all_seed_results = {}
@@ -305,9 +344,9 @@ def main():
         all_seed_results[seed] = results
         combined_results.extend(results)
 
-    save_results_csv(combined_results, "results/traditional_burrows_delta_balanced.csv")
+    save_results_csv(combined_results, f"results/traditional_burrows_delta_balanced{args.tag}.csv")
     if len(args.balance_seeds) > 1:
-        save_summary_csv(all_seed_results, "results/traditional_burrows_delta_balanced_summary.csv")
+        save_summary_csv(all_seed_results, f"results/traditional_burrows_delta_balanced_summary{args.tag}.csv")
 
 
 if __name__ == "__main__":

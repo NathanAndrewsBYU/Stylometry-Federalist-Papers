@@ -107,6 +107,12 @@ case "$MODE" in
     shift
     python run_experiment.py --mode balanced "$@"
     ;;
+  null-test)
+    # Random Hamilton-vs-Hamilton split; expect ~50%. Extra options pass through, e.g.:
+    #   sbatch submit_job.sh null-test --epoch-values 80 --split-seeds 1 2 3
+    shift
+    python run_experiment.py --mode null-test "$@"
+    ;;
   disputed-loo)
     # Extra options are passed straight through, e.g.:
     #   sbatch submit_job.sh disputed-loo --epoch-values 30 --balance-seeds 1 2 3 4
@@ -114,7 +120,7 @@ case "$MODE" in
     python run_experiment.py --mode disputed-loo "$@"
     ;;
   *)
-    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, balanced, disputed-loo"
+    echo "Unknown mode: $MODE. Use one of: first-try, full, disputed, epoch-sweep, balanced, disputed-loo, null-test"
     exit 1
     ;;
 esac

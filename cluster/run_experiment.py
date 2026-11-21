@@ -50,9 +50,12 @@ Usage examples:
 """
 
 import argparse
+import math
 import os
+import random
 import time
 
+import stylometry_lib
 from stylometry_lib import (
     device,
     list_txt_files,
@@ -63,10 +66,15 @@ from stylometry_lib import (
 )
 
 
+def binom_p_upper(k, n, p=0.5):
+    """P(X >= k) for X ~ Binomial(n, p), exact (no scipy needed)."""
+    return sum(math.comb(n, i) * p**i * (1 - p)**(n - i) for i in range(k, n + 1))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run Federalist Papers GPT-2 authorship experiments.")
     parser.add_argument("--mode", required=True,
-                         choices=["first-try", "full", "disputed", "epoch-sweep", "balanced", "disputed-loo"],
+                         choices=["first-try", "full", "disputed", "epoch-sweep", "balanced", "disputed-loo", "null-test"],
                          help="Which experiment to run.")
     parser.add_argument("--sample-size", type=int, default=None,
                          help="For --mode first-try: number of random papers to test (default: 10).")
@@ -90,6 +98,14 @@ def main():
                               "4 or 8 — try increasing if a job finishes with GPU memory to spare "
                               "(check via 'nvtop' in an salloc session) and watch for out-of-memory "
                               "errors if you push it too high.")
+    parser.add_argument("--corpus-root", default=None,
+                         help="Corpus directory to use instead of corpus/federalist "
+                              "(e.g. corpus/federalist_masked).")
+    parser.add_argument("--split-seeds", type=int, nargs="+", default=[1, 2, 3],
+                         help="For --mode null-test: seeds for the random Hamilton splits.")
+    parser.add_argument("--null-size", type=int, default=14,
+                         help="For --mode null-test: papers per pseudo-author (default 14 = "
+                              "Madison's size; 28 Hamilton papers used per split).")
     parser.add_argument("--output-dir", default="results",
                          help="Directory to save result CSVs into.")
     parser.add_argument("--save-full-models", action="store_true",
@@ -99,6 +115,9 @@ def main():
                               "disk writes on the cluster's shared filesystem).")
     args = parser.parse_args()
 
+    if args.corpus_root:
+        stylometry_lib.CORPUS_ROOT = args.corpus_root  # list_txt_files reads this at call time
+    print(f"Corpus root: {stylometry_lib.CORPUS_ROOT}")
     print(f"Device: {device}")
     print(f"Mode: {args.mode}")
 
@@ -271,6 +290,47 @@ def main():
             print(f"  epochs={row['epochs']:>4}  seed={row['balance_seed']:>2}  "
                   f"overall={row['overall_accuracy']:.1%}  "
                   f"disputed-papers-correct={row['disputed_accuracy']:.1%} (n={row['n_disputed']})")
+
+    elif args.mode == "null-test":
+        # NULL TEST: split Hamilton's papers at random into two pseudo-authors
+        # (A, B) and run the same balanced LOO. There is no real authorship
+        # difference, so accuracy should be ~50%. Anything clearly above that
+        # is topic / series / era clustering the method is picking up.
+        k = args.null_size
+        summary_rows, all_rows = [], []
+        for epoch_count in args.epoch_values:
+            for s_seed in args.split_seeds:
+                rng = random.Random(s_seed)
+                picked = rng.sample(hamilton_files, 2 * k)
+                group_a, group_b = sorted(picked[:k]), sorted(picked[k:])
+                print(f"\n{'='*60}\nNull test: epochs={epoch_count}, split_seed={s_seed}\n{'='*60}")
+                results = leave_one_out_validation_balanced(
+                    group_a, group_b,
+                    epochs=epoch_count, seed=args.seed, balance_seed=s_seed,
+                    batch_size=args.batch_size, save_full_models=args.save_full_models,
+                )
+                # The lib hardcodes the labels "hamilton"/"madison"; relabel.
+                rename = {"hamilton": "group_a", "madison": "group_b"}
+                for r in results:
+                    r["true_author"] = rename[r["true_author"]]
+                    r["predicted_author"] = rename[r["predicted_author"]]
+                    r["split_seed"] = s_seed
+                    r["epochs"] = epoch_count
+                all_rows.extend(results)
+                n_ok = sum(r["correct"] for r in results)
+                summary_rows.append({"epochs": epoch_count, "split_seed": s_seed,
+                                     "accuracy": n_ok / len(results),
+                                     "n_correct": n_ok, "n": len(results)})
+        save_results_csv(all_rows, os.path.join(args.output_dir, "null_test_detail.csv"))
+        save_results_csv(summary_rows, os.path.join(args.output_dir, "null_test_summary.csv"))
+        for epoch_count in args.epoch_values:
+            rows = [r for r in summary_rows if r["epochs"] == epoch_count]
+            ok, n = sum(r["n_correct"] for r in rows), sum(r["n"] for r in rows)
+            print(f"\nepochs={epoch_count}: per-split " +
+                  ", ".join(f"{r['accuracy']:.1%}" for r in rows) +
+                  f" | pooled {ok}/{n} = {ok/n:.1%}  "
+                  f"(one-sided binomial p vs 50% = {binom_p_upper(ok, n):.4f}; "
+                  f"approximate -- splits overlap)")
 
     elapsed = time.time() - start_time
     print(f"\nTotal runtime: {elapsed/60:.1f} minutes")

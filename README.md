@@ -1,5 +1,13 @@
 # Stylometry-Federalist-Papers
 This is a project to test how effective LLMs are in stylometrically determining authorship of disputed texts, using the federalist papers as a test case. I have found that the LLM perplexity method for determining authorship is quite accurate and sometimes more accurate than traditional methods, but there are some serious caveats.
+Can a fine-tuned language model tell Hamilton from Madison? I fine-tuned one GPT-2 model per author and attributed each held-out paper to whichever model found it less surprising (lower perplexity), following Huang, Murakami & Grieve (2025). I compared the results against Burrows' Delta, the classic stylometry baseline.
+
+Balanced training sets: GPT-2 attributes 98.5% of the 65 known papers correctly (mean over 5 seeds), vs. 92.3% for Delta.
+Unbalanced (51 Hamilton vs. 14 Madison): GPT-2 drops to 84.6% and loses to Delta (89.2%). Corpus-size imbalance is the biggest effect in the project.
+Disputed papers: GPT-2 assigns all 12 to Madison, matching the scholarly consensus.
+Main caveat: the epoch count was chosen using these same leave-one-out results, so the GPT-2 numbers are optimistic. Nested cross-validation is next.
+
+Status: in progress. Next: nested leave-one-out, content-word masking and null-test controls (code in cluster/mask_corpus.py), then Hebrew Bible texts.
 
 # Results
 All rows use leave-one-out validation on the Federalist Papers. "Balanced" means Hamilton's training set is subsampled to match Madison's size, while every Hamilton paper is still evaluated. Hamilton and Madison columns show correct/total.

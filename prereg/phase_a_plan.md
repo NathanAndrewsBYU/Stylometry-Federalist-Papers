@@ -1,7 +1,6 @@
 # Phase A plan: Federalist Papers screen
 
-**Status:** DRAFT for Nathan's approval. Nothing in this plan has been run yet except where a result is cited with its source file.
-**Date:** 2026-11-20
+**Date:** 2026-11-26
 **Governing documents:** `cluster/PROJECT.md` (project plan), `DECISIONS.md` (D-001 to D-007), BYU ORC agent policy (`BYU_ORC_AGENTS.md`, wins over everything here).
 
 Phase A **screens** models. It does not select the final model (that happens in Phase B under a locked protocol). Its job is to find out which model × representation combinations detect authorial style rather than topic, series position or chance, and to drop the rest.

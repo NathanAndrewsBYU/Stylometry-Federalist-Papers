@@ -1,0 +1,2 @@
+epochs,split_seed,accuracy,n_correct,n
+5,1,0.17857142857142858,5,28

@@ -139,10 +139,8 @@ class AuthorModel(Protocol):
 3. **Within-author random-split null:** 28 Hamilton papers split at random into 14 vs 14, under the same CV. Cheap arms: 100 splits; GPT-2: 5 splits. Expect AUC near 0.5, judged against that test's own permutation spread. Also Madison 7 vs 7 (cheap arms only; small).
 4. **Hamilton early vs late** (topic- and time-shifted, same author): papers 1–36 vs 59–85, balanced to 14 vs 14. A representation that separates these well is keying on topic or drift. Cheap arms and GPT-2.
 5. **Topic-shift test:** train on all balanced papers outside block 2–14, then test on the block 2–14 papers (Hamilton 6–9, 11–13; Madison 10, 14). Madison's training set is then only constitutional-structure papers, so a model must generalize across topic to get Fed 10 and 14 right. Compare the degradation of (a) raw vs (b)/(c)/(d) masked vs (e) content-only. Small n (9 papers), so it is reported descriptively with exact per-paper results.
-6. **Other author pairs:** Hamilton vs Jay and Madison vs Jay, each 5 vs 5 (cheap arms only). Jay's papers are almost all one topic (2–5, foreign dangers), so these are reported as small-sample, topic-confounded checks.
-7. **Learning curves:** training words per class of 2.5k, 5k, 10k, 20k, and all available (verify that "all" covers this), window sizes as in §1. Cheap arms on all representations; GPT-2 on the best masked representation only, at 3 sizes. Fit a power law to AUC against training size and extrapolate to Isaiah group sizes (to be measured in Phase B).
-8. **Disputed papers:** train the final screened configuration(s) on all balanced known papers and score the 12 disputed papers. A sanity check, interpreted with the topic caveat in §1.
-9. **Ablations:** §2.
+6. **Learning curves:** training words per class of 2.5k, 5k, 10k, 20k, and all available (verify that "all" covers this), window sizes as in §1. Cheap arms on all representations; GPT-2 on the best masked representation only, at 3 sizes. Fit a power law to AUC against training size and extrapolate to Isaiah group sizes (to be measured in Phase B).
+7. **Ablations:** §2.
 
 ---
 
@@ -182,12 +180,9 @@ A model × representation **advances to Phase B** if all of the following hold.
 
 ---
 
-## 9. Open questions for Nathan
-
-1. ~~GPT-2 epochs for the screen~~ — decided: 80 (D-008). Budget: about 34 GPU-hours for 3 representations, plus the learning curve.
-2. ~~Gate 1 thresholds~~ — approved as written (D-009).
-3. **Topic blocks** in §1: fine to verify them against Fed 1's outline and the paper headings, or do you or Prof. Baron prefer a published topic classification?
-4. **Phase B locked split** (decide before Phase B, not now): a locked set of about 20% of chapters, stratified by genre, plus nested CV on the rest (Claude's preference), or each outer CV fold used as the locked set.
+## 9. Open problems
+3. **Topic blocks** in §1: fine to verify them against Fed 1's outline and the paper headings, or is a published topic classification better?
+4. **Phase B locked split** (decide before Phase B, not now): a locked set of about 20% of chapters, stratified by genre, plus nested CV on the rest or each outer CV fold used as the locked set.
 
 ## 10. Order of work after approval
 

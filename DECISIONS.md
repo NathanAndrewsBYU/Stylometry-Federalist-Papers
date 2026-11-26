@@ -11,7 +11,9 @@ Choices that could affect how results are interpreted. Newest first. Each entry 
 - Delta uses fast floating-point mean/SD by default; the exact statistics-module path is kept for the regression check only.
 - The committed `traditional_burrows_delta_balanced.csv` came from the Colab notebook (scores all 65 papers), not from `cluster/traditional_stylometry.py` (scores only the 28 pool papers). The regression check targets the notebook logic.
 
-2026-11-26
+# 2026-11-26
+
+
 D-010 Legacy GPT-2 null test is biased; skip its 80-epoch run. (Nathan) GPT-2 null-test smoke run (Slurm job 15588902, legacy run_experiment.py --mode null-test, 5 epochs, split seed 1; cluster/results/null_smoke/null_test_summary.csv on the cluster): 5/28 = 17.9%. Exact lower-tail binomial P(X ≤ 5 | n = 28, p = 0.5) ≈ 0.0005, so this is systematic, not noise. This is probably because in the legacy balanced LOO, the held-out paper's own-class model is retrained on 13 papers while the other class's model keeps all 14. More training text lowers perplexity on any text, so the comparison is tilted toward the other class. This is the same asymmetry D-006 fixes, and it is stronger for GPT-2 than for Delta (40.7%). It appears that GPT-2 is extremely sensitive to corpus size. Consequences:
 
 Don't run the legacy 80-epoch null test (about 3 × 75 GPU-minutes for a biased answer). The GPT-2 null test runs in the new harness with symmetric stratified 5-fold (D-005, D-006).

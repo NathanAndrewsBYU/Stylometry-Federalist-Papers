@@ -2,6 +2,22 @@
 
 Choices that could affect how results are interpreted. Newest first. Each entry says who decided and why.
 
+**D-011 Harness implementation choices.** (Claude, proposed, Nathan approved)
+- Arm B2 uses LZMA compression cross-entropy instead of a true PPM model. A pure-Python PPM is too slow for 1,000 permutations; LZMA's 8 MB dictionary holds a whole training corpus. A PPM can be swapped in behind the same interface later.
+- Permutation tests use the stratified 5-fold design only. Symmetric leave-one-out (20 repeats) is reported for the observed data but not permuted (it would need about 560,000 model fits per configuration).
+- Delta's default variant is the project's per-class version (each author's own mean and SD), for continuity with the committed CSVs. Classic Burrows (pooled SD) and Cosine Delta are separate arms.
+- Kneser–Ney arm: order 3, fixed discount 0.75, lowercased tokens, uniform base over the shared training vocabulary.
+- Linear arm: L2 logistic regression (C = 1) on character 2–4-gram TF-IDF (top 20,000) plus function-word relative frequencies.
+- Delta uses fast floating-point mean/SD by default; the exact statistics-module path is kept for the regression check only.
+- The committed `traditional_burrows_delta_balanced.csv` came from the Colab notebook (scores all 65 papers), not from `cluster/traditional_stylometry.py` (scores only the 28 pool papers). The regression check targets the notebook logic.
+
+2026-11-26
+D-010 Legacy GPT-2 null test is biased; skip its 80-epoch run. (Nathan) GPT-2 null-test smoke run (Slurm job 15588902, legacy run_experiment.py --mode null-test, 5 epochs, split seed 1; cluster/results/null_smoke/null_test_summary.csv on the cluster): 5/28 = 17.9%. Exact lower-tail binomial P(X ≤ 5 | n = 28, p = 0.5) ≈ 0.0005, so this is systematic, not noise. This is probably because in the legacy balanced LOO, the held-out paper's own-class model is retrained on 13 papers while the other class's model keeps all 14. More training text lowers perplexity on any text, so the comparison is tilted toward the other class. This is the same asymmetry D-006 fixes, and it is stronger for GPT-2 than for Delta (40.7%). It appears that GPT-2 is extremely sensitive to corpus size. Consequences:
+
+Don't run the legacy 80-epoch null test (about 3 × 75 GPU-minutes for a biased answer). The GPT-2 null test runs in the new harness with symmetric stratified 5-fold (D-005, D-006).
+The existing balanced H-vs-M GPT-2 results (98.5%) had the same tilt against the correct answer for the 28 papers in the balanced pool (14 Madison + 14 sampled Hamilton). The 37 Hamilton papers outside the pool were scored against two 14-paper models with no tilt. So the bias worked against the reported accuracy, not for it. Still re-measured under the new design.
+Caveat: one split at 5 epochs only. The size of the tilt at 80 epochs is unknown until the harness runs.
+
 ## 2026-11-20
 
 **D-009 Gate 1 thresholds approved as written** in `prereg/phase_a_plan.md` §7. (Nathan)
@@ -34,7 +50,7 @@ Leave-one-out pushes true-null accuracy below 50% (the held-out paper's own grou
 - Test whether `--gpus=h200:1` alone (no pinned partition) avoids P100 nodes; drop the partition pin if so.
 - Model list: drop stretch arm G (from-scratch neural model); keep H (ensemble).
 
-**D-003 Existing code is frozen as the legacy record.** (Claude, proposed; Nathan accepted with "all other fixes")
+**D-003 Existing code is frozen as the legacy record.** (Claude, proposed; Nathan accepted)
 `cluster/` stays as-is as the record of all runs so far. New harness code goes in `src/stylo/`.
 
 **D-002 Cluster code synced; null-test and masking code committed** (`709ed24`). Delta null test run on the real corpus: per split 53.6, 35.7, 28.6, 39.3, 46.4%; pooled 57/140 = 40.7%.

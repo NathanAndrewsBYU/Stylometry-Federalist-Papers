@@ -1,6 +1,8 @@
 Project: Do Proto-, Deutero- and Trito-Isaiah differ stylistically?  
  A validated, content-masked perplexity/stylometry approach
 
+ > Plan of record as of 2026-11-26. Supersedes `cluster/PROJECT.md`, which is kept only as history. Approved decisions in `DECISIONS.md` (D-001 onward) still apply; where this plan and a decision differ, the decision governs until this plan is updated.
+
 0\. Goal, framing and phases
 
 The goal is one peer-reviewed paper, within about two years, with Isaiah as the headline result. I will be collaborating with a BYU professor.  

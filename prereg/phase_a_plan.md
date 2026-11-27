@@ -169,7 +169,7 @@ A model × representation **advances to Phase B** if all of the following hold.
 | GPT-2 learning curve (one representation, 3 sizes, 1 seed) | Slurm GPU | 2–6 GPU-hours |
 
 - The per-training times come from the measured 28.4 min for 30 trainings at 30 epochs, and an estimated 75 min for 30 trainings at 80 epochs, on one H200 (Isaiah handoff, §4). Fold trainings use slightly fewer papers, so these are upper-end estimates.
-- Each GPT-2 batch is a separate submission that Nathan approves (`PROJECT.md` §3.7 rules 2 and 6). No job arrays without approval.
+- Each GPT-2 batch is a separate submission that I approve. No job arrays without approval.
 - Test whether `--gpus=h200:1` without a pinned partition avoids P100 nodes; if so, drop the partition pin (D-004). Consider L40S (compute capability 8.9) as fairer use for a 124M model.
 
 ---

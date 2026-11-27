@@ -8,7 +8,7 @@
 ## Project documents
 - `prereg/Isaiah_stylometry_project.md`: the governing plan (phases, gates, rules).
 - `cluster/ISAIAH_AUTHORSHIP_STYLOMETRY_HANDOFF.md`: history, results so far, environment details.
-- `DECISIONS.md`: every interpretation-relevant decision. Add to it.
+- `DECISION-LOG.md`: every interpretation-relevant decision. Add to it.
 - `prereg/`: plans and pre-registrations. Don't run a phase before its plan is approved.
 - `AI_LOG.md`: what Claude wrote or ran, and what Nathan reviewed. Add an entry each session.
 

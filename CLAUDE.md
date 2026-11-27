@@ -6,7 +6,7 @@
 - Never handle Nathan's password or 2FA. Ask before any large job, job array, or GPU batch, stating cores, memory, GPUs, wall time and task count.
 
 ## Project documents
-- `cluster/PROJECT.md`: the governing plan (phases, gates, rules).
+- `prereg/Isaiah_stylometry_project.md`: the governing plan (phases, gates, rules).
 - `cluster/ISAIAH_AUTHORSHIP_STYLOMETRY_HANDOFF.md`: history, results so far, environment details.
 - `DECISIONS.md`: every interpretation-relevant decision. Add to it.
 - `prereg/`: plans and pre-registrations. Don't run a phase before its plan is approved.
@@ -18,6 +18,6 @@
 - `*.sh` must keep LF line endings (`.gitattributes`).
 
 ## Working with Nathan
-- He works on Windows in PowerShell (PyCharm terminal). Give PowerShell commands for the PC and bash commands for the cluster, and always say which machine each command runs on.
+- I work on Windows in PowerShell (PyCharm terminal). Give PowerShell commands for the PC and bash commands for the cluster, and always say which machine each command runs on.
 - Local Python: `C:\Users\natha\miniconda3\python.exe` (not on PATH). No torch locally; GPT-2 runs only on the cluster.
 - Cluster repo: `~/training/Stylometry-Federalist-Papers` (run scripts from its `cluster/` folder). Mamba env `federalist`.

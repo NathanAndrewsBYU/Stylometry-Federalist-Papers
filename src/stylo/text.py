@@ -9,7 +9,7 @@ import re
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 # Word tokens: letters and apostrophes (same character class as the legacy
-# Delta tokenizer, so lowercased word tokens match cluster/ exactly).
+# Delta tokenizer, so lowercased word tokens match legacy/cluster/ exactly).
 WORD_RE = re.compile(r"[A-Za-z']+")
 # Full token stream: words, digit runs, or any single non-space symbol
 # (punctuation), in order.
@@ -17,7 +17,7 @@ TOKEN_RE = re.compile(r"[A-Za-z']+|[0-9]+|[^\sA-Za-z0-9']")
 
 
 def clean_federalist(raw: str) -> str:
-    """Identical to cluster/stylometry_lib.clean_text: drop [...] editorial
+    """Identical to legacy/cluster/stylometry_lib.clean_text: drop [...] editorial
     brackets and a trailing PUBLIUS signature, collapse whitespace."""
     text = re.sub(r"\[.*?\]", "", raw)
     text = re.sub(r"PUBLIUS\.?\s*$", "", text.strip())

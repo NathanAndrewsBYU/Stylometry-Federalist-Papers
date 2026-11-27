@@ -1,4 +1,11 @@
 .idea/
 *.recording.jsonl.gz
 __pycache__/
-cluster/corpus/
+# corpora are downloaded/copied, never committed
+data/corpus/
+# run outputs of the frozen legacy pipeline (copy finished CSVs into results/legacy/ by hand)
+legacy/cluster/corpus
+legacy/cluster/results/
+legacy/cluster/logs/
+# local-only handoff document (contains personal details; never commit)
+legacy/cluster/ISAIAH_AUTHORSHIP_STYLOMETRY_HANDOFF.md

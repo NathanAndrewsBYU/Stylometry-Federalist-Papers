@@ -1,4 +1,4 @@
-"""Federalist Papers task definitions (prereg/phase_a_plan.md section 6).
+"""Federalist Papers task definitions (docs/phase_a_plan.md section 6).
 
 Each task turns the corpus into (pool, extras, classes, scheme_hint):
   pool    class -> unit ids evaluated by cross-validation

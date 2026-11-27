@@ -1,7 +1,7 @@
 """Command-line runner for Phase A screening runs.
 
 Examples (from the repo root; see scripts/run_screen.py for the launcher):
-  python scripts/run_screen.py --corpus-root cluster/corpus/federalist --task hvm \
+  python scripts/run_screen.py --corpus-root data/corpus/federalist --task hvm \
       --arm delta --rep raw --window 0 --scheme kfold --seeds 1 2 3 4 5 --n-perm 1000 --out results/phase_a/delta_raw
   python scripts/run_screen.py ... --task null_ham --seeds 1-100 --scheme kfold
 

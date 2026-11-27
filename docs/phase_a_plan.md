@@ -1,7 +1,7 @@
 # Phase A plan: Federalist Papers screen
 
 **Date:** 2026-11-26
-**Governing documents:** `prereg/Isaiah_stylometry_project.md` (project plan), `DECISION-LOG.md` (D-001 to D-007), BYU ORC agent policy (`BYU_ORC_AGENTS.md`, wins over everything here).
+**Governing documents:** `docs/project_plan.md` (project plan), `docs/DECISION-LOG.md` (D-001 to D-007), BYU ORC agent policy (`BYU_ORC_AGENTS.md`, wins over everything here).
 
 Phase A **screens** models. It does not select the final model (that happens in Phase B under a locked protocol). Its job is to find out which model × representation combinations detect authorial style rather than topic, series position or chance, and to drop the rest.
 
@@ -9,7 +9,7 @@ Phase A **screens** models. It does not select the final model (that happens in 
 
 ## 1. Corpus and units
 
-**Corpus:** Project Gutenberg ebook #1404, split by `cluster/prepare_corpus.py` into 85 files. Attributions follow Adair (1944) and Mosteller & Wallace (1963):
+**Corpus:** Project Gutenberg ebook #1404, split by `legacy/cluster/prepare_corpus.py` into 85 files. Attributions follow Adair (1944) and Mosteller & Wallace (1963):
 
 | Class | n | Papers |
 |---|---|---|
@@ -58,7 +58,7 @@ Built from the same cleaned text (`clean_text`: remove `[...]` editorial bracket
 | (d) | Function-word frequency vector | Relative frequencies of the fixed function-word list (bag of words, no order) |
 | (e) | Content words only | Content words kept; function words replaced by a placeholder (`mask_corpus.py --invert` logic) |
 
-- **Function-word list:** the fixed 253-word list already in `cluster/mask_corpus.py`. It is fixed rather than "top-K frequent" so that topical words such as *state*, *government* and *power* can never count as function words. Version-pin and hash it.
+- **Function-word list:** the fixed 253-word list already in `legacy/cluster/mask_corpus.py`. It is fixed rather than "top-K frequent" so that topical words such as *state*, *government* and *power* can never count as function words. Version-pin and hash it.
 - **POS tagger:** spaCy (`en_core_web_sm`, pinned version), Universal POS tags. Federalist English is 18th-century but not KJV-archaic; tagger accuracy is spot-checked on 200 hand-checked tokens and reported. (The archaic-normalization rules for the KJV/ASV are a Phase B task.)
 - **Existing `X`-masked corpus** (`mask_corpus.py`): kept as a sensitivity variant of (b), since all earlier masking commands use it.
 - **Ablations:** punctuation kept vs removed; case kept vs lowercased; Delta with 50 / 100 / 200 / 500 most frequent words.
@@ -75,7 +75,7 @@ Every arm implements the same interface (§5) and runs on identical units, split
 | B1 | Smoothed word/tag n-gram language model (modified Kneser–Ney, n = 3–4), one per class; score = per-token cross-entropy | a, b, c, e | CPU, seconds–minutes |
 | B2 | Character n-gram / PPM-style compression model, one per class | a, b, c, e | CPU, minutes |
 | C | Linear classifier (L2 logistic regression, also linear SVM) on character 2–4-grams + function-word frequencies | a, b, c, d, e | CPU, seconds |
-| D | Existing fine-tuned GPT-2 small (`cluster/stylometry_lib.py`), unchanged except for generalized labels and the fold logic | a, b, e (c optional) | GPU |
+| D | Existing fine-tuned GPT-2 small (`legacy/cluster/stylometry_lib.py`), unchanged except for generalized labels and the fold logic | a, b, e (c optional) | GPU |
 | E | Ensemble of the best complementary arms (stacked on out-of-fold scores) | — | CPU |
 ---
 
@@ -120,9 +120,9 @@ class AuthorModel(Protocol):
 
 - `score` returns one value per class. Perplexity, cross-entropy and Delta are all naturally per class; a classifier returns −log p(class).
 - The evaluation code (splits, permutations, metrics, bootstrap) never sees model internals. Adding an arm means adding one file in `src/stylo/models/`.
-- **The GPT-2 arm wraps `stylometry_lib`.** It changes only label handling (no hardcoded `hamilton`/`madison`) and the fold loop. `cluster/` stays untouched as the legacy record.
+- **The GPT-2 arm wraps `stylometry_lib`.** It changes only label handling (no hardcoded `hamilton`/`madison`) and the fold loop. `legacy/cluster/` stays untouched as the legacy record.
 - **Every output** writes `manifest.json`: git commit, config hash, Slurm job ID (or `local`), corpus source and hash, function-word list hash, seeds, package versions.
-- **Regression check before anything new:** the harness Delta arm in LOO mode (no symmetric hold-out) must reproduce `results/traditional_burrows_delta_balanced.csv` exactly.
+- **Regression check before anything new:** the harness Delta arm in LOO mode (no symmetric hold-out) must reproduce `results/legacy/traditional_burrows_delta_balanced.csv` exactly.
 
 ---
 

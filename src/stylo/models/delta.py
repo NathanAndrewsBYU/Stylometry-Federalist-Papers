@@ -1,7 +1,7 @@
 """Arm A: Burrows' Delta family on most-frequent-word relative frequencies.
 
 Variants:
-  per_class  The legacy project version (cluster/traditional_stylometry.py and
+  per_class  The legacy project version (legacy/cluster/traditional_stylometry.py and
              the Colab notebooks): each class has its own per-word mean and
              SD; Delta = mean |(x - mean_c) / sd_c|. Kept as the default so the
              regression check reproduces the committed CSVs exactly.

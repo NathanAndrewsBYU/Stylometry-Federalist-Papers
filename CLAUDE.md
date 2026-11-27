@@ -6,18 +6,18 @@
 - Never handle Nathan's password or 2FA. Ask before any large job, job array, or GPU batch, stating cores, memory, GPUs, wall time and task count.
 
 ## Project documents
-- `prereg/Isaiah_stylometry_project.md`: the governing plan (phases, gates, rules).
-- `cluster/ISAIAH_AUTHORSHIP_STYLOMETRY_HANDOFF.md`: history, results so far, environment details.
-- `DECISION-LOG.md`: every interpretation-relevant decision. Add to it.
-- `prereg/`: plans and pre-registrations. Don't run a phase before its plan is approved.
-- `AI_LOG.md`: what Claude wrote or ran, and what Nathan reviewed. Add an entry each session.
+- `docs/project_plan.md`: the governing plan (phases, gates, rules).
+- `legacy/cluster/ISAIAH_AUTHORSHIP_STYLOMETRY_HANDOFF.md` (local only, git-ignored): history, results so far, environment details.
+- `docs/DECISION-LOG.md`: every interpretation-relevant decision. Add to it.
+- `docs/`: plans and pre-registrations. Don't run a phase before its plan is approved.
+- `docs/AI_LOG.md`: what Claude wrote or ran, and what Nathan reviewed. Add an entry each session.
 
 ## Code
-- `cluster/` is the frozen legacy pipeline that produced all results so far. Don't rewrite it; new harness code goes in `src/stylo/`.
+- `legacy/cluster/` is the frozen legacy pipeline that produced all results so far. Don't rewrite it; new harness code goes in `src/stylo/`.
 - Every number in a README or report must come from a CSV produced by an actual run. Cross-check before editing tables.
 - `*.sh` must keep LF line endings (`.gitattributes`).
 
 ## Working with Nathan
 - I work on Windows in PowerShell (PyCharm terminal). Give PowerShell commands for the PC and bash commands for the cluster, and always say which machine each command runs on.
 - Local Python: `C:\Users\natha\miniconda3\python.exe` (not on PATH). No torch locally; GPT-2 runs only on the cluster.
-- Cluster repo: `~/training/Stylometry-Federalist-Papers` (run scripts from its `cluster/` folder). Mamba env `federalist`.
+- Cluster repo: `~/training/Stylometry-Federalist-Papers` (run legacy scripts from its `legacy/cluster/` folder and harness scripts from the repo root). Mamba env `federalist`.

@@ -7,7 +7,7 @@ Unbalanced (51 Hamilton vs. 14 Madison): GPT-2 drops to 84.6% and loses to Delta
 Disputed papers: GPT-2 assigns all 12 to Madison, matching the scholarly consensus.
 Main caveat: the epoch count was chosen using these same leave-one-out results, so the GPT-2 numbers are optimistic. Nested cross-validation is next.
 
-Status: in progress. Next: nested leave-one-out, content-word masking and null-test controls (code in cluster/mask_corpus.py), then Hebrew Bible texts.
+Status: in progress. Next: nested leave-one-out, content-word masking and null-test controls (code in legacy/cluster/mask_corpus.py), then Hebrew Bible texts.
 
 # Results
 All rows use leave-one-out validation on the Federalist Papers. "Balanced" means Hamilton's training set is subsampled to match Madison's size, while every Hamilton paper is still evaluated. Hamilton and Madison columns show correct/total.
@@ -95,27 +95,39 @@ The ratio is Hamilton perplexity divided by Madison perplexity. Higher means a s
 ```
 .
 ├── README.md
+├── CLAUDE.md                                         # Notes for Claude Code
 ├── LICENSE
-├── notebooks/                                    # Google Colab notebooks
-│   ├── gpt2_federalist_stylometry.ipynb          # GPT-2 perplexity experiment (original Colab version)
-│   ├── burrows_delta_balanced_n65.ipynb          # Burrows' Delta, balanced, 65 known papers
-│   └── burrows_delta_disputed_included_n77.ipynb # Burrows' Delta, balanced, 77 papers (disputed folded into Madison)
-├── cluster/                                      # Code for the BYU supercomputer (SLURM)
-│   ├── README_CLUSTER.md                         # Cluster setup and how to run experiments
-│   ├── prepare_corpus.py                         # Downloads the papers from Project Gutenberg and splits them by author
-│   ├── stylometry_lib.py                         # GPT-2 fine-tuning, perplexity scoring, leave-one-out validation
-│   ├── run_experiment.py                         # Command-line entry point for all GPT-2 experiments
-│   ├── submit_job.sh                             # SLURM batch script (sbatch submit_job.sh <mode>)
-│   ├── traditional_stylometry.py                 # Burrows' Delta baseline (no GPU needed)
-│   └── requirements.txt                          # Python dependencies
-└── results/                                      # CSV output from every validation run
+├── docs/                                             # Plans and logs
+│   ├── project_plan.md                               # Governing project plan (phases, gates, rules)
+│   ├── phase_a_plan.md                               # Phase A plan (Federalist screen)
+│   ├── DECISION-LOG.md                               # Interpretation-relevant decisions
+│   └── AI_LOG.md                                     # What Claude wrote or ran, and what was reviewed
+├── src/stylo/                                        # Model-agnostic harness (new code)
+├── scripts/                                          # Harness entry points (run_screen.py, regression_delta.py)
+├── tests/                                            # Harness unit tests
+├── legacy/                                           # Frozen code that produced the results below
+│   ├── notebooks/                                    # Google Colab notebooks
+│   │   ├── gpt2_federalist_stylometry.ipynb          # GPT-2 perplexity experiment (original Colab version)
+│   │   ├── burrows_delta_balanced_n65.ipynb          # Burrows' Delta, balanced, 65 known papers
+│   │   └── burrows_delta_disputed_included_n77.ipynb # Burrows' Delta, balanced, 77 papers (disputed folded into Madison)
+│   └── cluster/                                      # Code for the BYU supercomputer (SLURM)
+│       ├── README_CLUSTER.md                         # Cluster setup and how to run experiments
+│       ├── prepare_corpus.py                         # Downloads the papers from Project Gutenberg and splits them by author
+│       ├── stylometry_lib.py                         # GPT-2 fine-tuning, perplexity scoring, leave-one-out validation
+│       ├── run_experiment.py                         # Command-line entry point for all GPT-2 experiments
+│       ├── submit_job.sh                             # SLURM batch script (sbatch submit_job.sh <mode>)
+│       ├── traditional_stylometry.py                 # Burrows' Delta baseline (no GPU needed)
+│       ├── mask_corpus.py                            # Content-word masking and function-word list
+│       └── requirements.txt                          # Python dependencies
+└── results/
+    └── legacy/                                       # CSV output from every legacy validation run
 ```
 
-Folders created when you run the code (not stored in the repo): `corpus/federalist/` (the papers, one folder per author, made by `prepare_corpus.py`) and `logs/` (SLURM output and error logs).
+Folders created when you run the code (not stored in the repo): `data/corpus/federalist/` (the papers, one folder per author, made by `legacy/cluster/prepare_corpus.py`; the legacy scripts reach it through the link `legacy/cluster/corpus`) and `legacy/cluster/logs/` (SLURM output and error logs).
 
 ## Results files
 
-| Pattern in `results/` | What it contains |
+| Pattern in `results/legacy/` | What it contains |
 |---|---|
 | `leave_one_out_first_try_*.csv`, `leave_one_out_n10.csv` | Early 10-paper test runs |
 | `leave_one_out_full_epochs30.csv` | Unbalanced GPT-2 leave-one-out, 65 known papers, 30 epochs |
@@ -159,9 +171,9 @@ Papers are downloaded from Project Gutenberg and split by author: Hamilton 51, M
 As a baseline, I tested the same corpus under the same conditions with Burrows' Delta, which is a widely used traditional stylometry method. This will help establish a comparison between LLM methods and more traditional methods. For each paper, Burrows' Delta takes the 100 most frequent words in the combined training corpus, computes their per-1000-word frequencies, and builds an author profile (mean and standard deviation of each word's frequency). A held-out paper is assigned to the author with the smaller mean absolute z-score distance (Delta). The same leave-one-out and balancing procedure is used as for GPT-2.
 
 # Instructions
-To replicate this experiment on colab, Open notebooks/gpt2_federalist_stylometry.ipynb in Colab, set runtime to GPU, run cells in order. It will import GPT-2 and everything else necessary, and autodownloads the federalist papers from the Gutenberg Project website. Cell 8 has sample_size = 10 and epoch = 10, adjust these as necessary.
+To replicate this experiment on colab, Open legacy/notebooks/gpt2_federalist_stylometry.ipynb in Colab, set runtime to GPU, run cells in order. It will import GPT-2 and everything else necessary, and autodownloads the federalist papers from the Gutenberg Project website. Cell 8 has sample_size = 10 and epoch = 10, adjust these as necessary.
 
-To replicate this experiment on a cluster, refer to cluster/README_CLUSTER.md
+To replicate this experiment on a cluster, refer to legacy/cluster/README_CLUSTER.md
 
 To replicate the Burrows' Delta experiment, open those notebooks on Colab, set runtime to CPU, and run the cells in order. The different notebooks are balanced n=65 and balanced n=77.
 

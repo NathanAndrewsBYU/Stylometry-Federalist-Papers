@@ -1,5 +1,5 @@
 """Regression check (plan section 5): the harness Delta arm, run in the
-legacy design, must reproduce results/traditional_burrows_delta_balanced.csv
+legacy design, must reproduce results/legacy/traditional_burrows_delta_balanced.csv
 (the Colab n=65 notebook) exactly.
 
 Legacy design reproduced here:
@@ -10,7 +10,7 @@ Legacy design reproduced here:
   - the other 37 Hamilton papers scored against the full-pool profiles
 
 Usage (repo root):
-  python scripts/regression_delta.py --corpus-root cluster/corpus/federalist
+  python scripts/regression_delta.py --corpus-root data/corpus/federalist
 Exit code 0 = all rows match.
 """
 
@@ -32,7 +32,7 @@ from stylo.tasks import build_task  # noqa: E402
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--corpus-root", required=True)
-    p.add_argument("--expected", default="results/traditional_burrows_delta_balanced.csv")
+    p.add_argument("--expected", default="results/legacy/traditional_burrows_delta_balanced.csv")
     p.add_argument("--tol", type=float, default=1e-9)
     a = p.parse_args()
 

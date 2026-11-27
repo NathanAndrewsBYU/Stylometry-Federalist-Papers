@@ -1,7 +1,7 @@
 Project: Do Proto-, Deutero- and Trito-Isaiah differ stylistically?  
  A validated, content-masked perplexity/stylometry approach
 
- > Plan of record as of 2026-11-26. Supersedes `cluster/PROJECT.md`, which is kept only as history. Approved decisions in `DECISION-LOG.md` (D-001 onward) still apply; where this plan and a decision differ, the decision governs until this plan is updated.
+ > Plan of record as of 2026-11-26. Supersedes `legacy/cluster/PROJECT.md`, which is kept only as history. Approved decisions in `DECISION-LOG.md` (D-001 onward) still apply; where this plan and a decision differ, the decision governs until this plan is updated.
 
 0\. Goal, framing and phases
 

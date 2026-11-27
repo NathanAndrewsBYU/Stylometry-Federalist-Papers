@@ -1,5 +1,5 @@
-# Fixed English function-word list, copied verbatim from cluster/mask_corpus.py (FUNCTION_WORDS).
-# One word per line, lowercase, sorted. Do not edit without logging it in DECISIONS.md.
+# Fixed English function-word list, copied verbatim from legacy/cluster/mask_corpus.py (FUNCTION_WORDS).
+# One word per line, lowercase, sorted. Do not edit without logging it in docs/DECISION-LOG.md.
 a
 about
 above

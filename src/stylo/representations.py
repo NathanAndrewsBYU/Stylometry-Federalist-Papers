@@ -1,4 +1,4 @@
-"""Text representations (prereg/phase_a_plan.md section 2) and windowing.
+"""Text representations (docs/phase_a_plan.md section 2) and windowing.
 
 Windowing is done on the RAW token stream (so a 500-word window covers the
 same stretch of text in every representation); the representation is then
@@ -13,7 +13,7 @@ Codes:
                     Used as the function-word frequency vector by Delta/linear.
   content_only  (e) content words kept, function words -> "X"
   fw_x          sensitivity variant of (b): other words -> "X"
-                    (same rule as cluster/mask_corpus.py)
+                    (same rule as legacy/cluster/mask_corpus.py)
 """
 
 from __future__ import annotations

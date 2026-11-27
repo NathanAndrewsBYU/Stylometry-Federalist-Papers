@@ -5,7 +5,8 @@ class c's training text, per character of the window:
     8 * (|LZMA(train_c + window)| - |LZMA(train_c)|) / len(window)
 Lower = the window is more predictable from that class's text.
 
-This stands in for a true PPM model (PROJECT.md section 4.4 arm B). LZMA is
+This stands in for a true PPM model (docs/project_plan.md section 1.4, arm B;
+docs/DECISION-LOG.md D-011). LZMA is
 fast because it is written in C, and its dictionary (8 MB at preset 6) holds
 a whole training corpus, which zlib's 32 KB window cannot. A pure-Python PPM
 would be too slow for 1,000 permutations. If needed, a PPM implementation

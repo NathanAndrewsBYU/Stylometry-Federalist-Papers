@@ -76,13 +76,7 @@ Every arm implements the same interface (§5) and runs on identical units, split
 | B2 | Character n-gram / PPM-style compression model, one per class | a, b, c, e | CPU, minutes |
 | C | Linear classifier (L2 logistic regression, also linear SVM) on character 2–4-grams + function-word frequencies | a, b, c, d, e | CPU, seconds |
 | D | Existing fine-tuned GPT-2 small (`cluster/stylometry_lib.py`), unchanged except for generalized labels and the fold logic | a, b, e (c optional) | GPU |
-| H | Ensemble of the best complementary arms (stacked on out-of-fold scores) | — | CPU |
-
-- **Dropped:** G (from-scratch neural model). At tens of thousands of words per class it is not expected to beat B.
-- **Deferred stretch arms:** E (impostors / unmasking) and F (another pretrained LM). These only run once the core path is on schedule.
-- **GPT-2 contamination:** GPT-2's WebText very likely contains the Federalist Papers. Any GPT-2 advantage on raw text (a) may partly reflect memorization. The masked representations reduce, but do not remove, this risk.
-- **GPT-2 epochs: 80, fixed** (Nathan, D-008). No epoch tuning in Phase A. Caveat for every report: 80 was chosen on the same balanced-LOO scores it produced earlier, so GPT-2 has had more selection than the cheap arms. Its Phase A numbers are somewhat optimistic until the locked Phase B evaluation.
-
+| E | Ensemble of the best complementary arms (stacked on out-of-fold scores) | — | CPU |
 ---
 
 ## 4. Validation design
